@@ -2,7 +2,16 @@
 
 > 🇬🇧 **TL;DR (English)**  
 > FinBot is a multimodal personal finance Telegram bot built with Python, PostgreSQL and Google Gemini 2.5 Flash.  
-> Users can record transactions via text, audio and images, and ask natural-language questions that are translated into safe SQL analytics.
+> Users can record transactions via text, audio, or images, and ask natural-language questions that are translated into safe, read-only SQL analytics.
+
+💼 **Highlights for reviewers**
+
+- **Multimodal input**: text, voice, and receipt images, all funneled into structured transactions.
+- **Natural language → SQL → interpreted answer** flow with safety checks.
+- **Layered architecture**: bot handlers, services, DB layer, web dashboard.
+- **Production-friendly setup**: Docker, Alembic migrations, webhook-based Telegram bot, JWT-protected dashboard.
+
+---
 
 Bienvenido a FinBot, un experimento serio en cómo usar IA para organizar la vida financiera de gente normal que no quiere abrir Excel cada vez que compra una empanada.
 
@@ -59,7 +68,7 @@ FinBot convierte cualquier cosa que le envíes en una transacción financiera:
 ### 1. Clonar repo
 ```bash
 git clone <repository-url>
-cd telegram_finbot
+cd finbot-public-portfolio
 ```
 
 ### 2. Instalar dependencias
@@ -103,11 +112,11 @@ Toda la explicación del proyecto (arquitectura, capas, modelos de datos, flujo 
 
 Si quieres ver lo interesante del código, empieza aquí:
 
-- **`bot/services/ai_service.py`** → Integración multimodal con Gemini (texto, audio, imagen).
-- **`bot/services/analytics_service.py`** → Preguntas en lenguaje natural → SQL seguro → respuesta amigable.
-- **`bot/handlers/natural_language.py`** → Enrutamiento entre registrar transacciones y responder consultas.
-- **`dashboard.py` + `templates/dashboard.html`** → Dashboard web con Flask + JWT.
-- **`models.py` + `migrations/`** → Modelo de datos y migraciones con SQLAlchemy + Alembic.
+- `bot/services/ai_service.py` → Integración multimodal con Gemini (texto, audio, imagen).
+- `bot/services/analytics_service.py` → Preguntas en lenguaje natural → SQL seguro → respuesta amigable.
+- `bot/handlers/natural_language.py` → Enrutamiento entre registrar transacciones y responder consultas.
+- `dashboard.py` + `templates/dashboard.html` → Dashboard web con Flask + JWT.
+- `models.py` + `migrations/` → Modelo de datos y migraciones con SQLAlchemy + Alembic.
 
 ## 🛡️ Licencia / Disclaimer
 
