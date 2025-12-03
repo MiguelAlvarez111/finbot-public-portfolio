@@ -1,716 +1,759 @@
-# PROJECT_CONTEXT.md
+# Project Context
 
-**Fuente Única de Verdad** - Documentación Técnica Completa de FinBot AI 2.0
+## 1. Overview
+
+**FinBot** is a personal finance management Telegram bot that helps users track their income and expenses through natural, conversational interactions. The bot leverages AI to understand free-form text, voice messages, and even photos of receipts, making financial tracking as simple as chatting with a friend.
+
+### Main Goal
+
+The primary goal is to reduce friction in personal finance tracking by allowing users to record transactions using natural language (e.g., "Gasté 20k en comida ayer") instead of filling out forms or navigating complex menus. The bot also provides analytics, budgeting, and goal-setting features to help users understand and improve their financial habits.
+
+### Type of Product
+
+This is a **Telegram bot** with a complementary **web dashboard**. The bot handles all user interactions via Telegram, while the dashboard provides a more detailed view of financial data with charts and tables.
+
+### User Experience
+
+A typical user journey:
+
+1. **Onboarding**: New users go through an interactive setup where they select default expense/income categories and try a demo transaction
+2. **Transaction Recording**: Users can record transactions in multiple ways:
+   - Text: "Gasté 50 lucas en mercado"
+   - Voice: Record a voice message describing the transaction
+   - Photo: Send a photo of a receipt/bill for OCR extraction
+3. **Analytics**: Users can ask questions in natural language like "¿Cuánto gasté en comida este mes?" and receive AI-powered answers
+4. **Management**: Users can create budgets, set savings goals, manage categories, view reports, and export data to Excel
+
+The bot is designed to feel conversational and intelligent, minimizing the need for users to learn specific commands or navigate complex menus.
 
 ---
 
-## 🎯 Visión Ejecutiva (5 minutos)
+## 2. Main Features
 
-**FinBot AI 2.0** es un bot de Telegram para gestión de finanzas personales con arquitectura **AI-First y Multimodal**. Los usuarios pueden registrar transacciones mediante **texto natural, voz o fotos de facturas**, y hacer **consultas analíticas en lenguaje natural** sobre sus finanzas.
+### Transaction Capture (Text, Voice, Images)
 
-### Identidad del Sistema
-- **Nombre**: FinBot AI 2.0 (Multimodal)
-- **Arquitectura**: AI-First con procesamiento multimodal nativo
-- **Motor de IA**: Google Gemini 2.5 Flash (`google-generativeai>=0.8.0`)
-- **Base de Datos**: PostgreSQL con Alembic para migraciones
-- **Estado**: Producción/Staging - Desplegado y funcional
+**What it does**: Users can record transactions using natural language text, voice messages, or photos of receipts. The AI extracts amount, category, description, and date from any of these inputs.
 
-### Capacidades Principales
-1. **Registro Multimodal**: Texto, voz (STT) y fotos (OCR) usando IA
-2. **Análisis Inteligente**: Text-to-SQL seguro para consultas financieras
-3. **Gestión Financiera**: Presupuestos, metas, categorías, reportes
-4. **Dashboard Web**: Visualización temporal con métricas avanzadas
+**Implementation**:
+- `bot/handlers/natural_language.py` - Handles text messages and classifies intent (register transaction vs. query analytics)
+- `bot/handlers/media_handler.py` - Processes voice messages (speech-to-text) and photos (OCR)
+- `bot/services/ai_service.py` - Core AI service using Google Gemini 2.5 Flash for parsing transactions from text, audio, or images
+
+**Key capabilities**:
+- Understands Colombian slang ("lucas", "palos", "k" for thousands)
+- Handles relative dates ("ayer", "hoy", "antier")
+- Automatically categorizes transactions based on context
+- Supports both expenses and income
+
+### AI-Assisted Parsing and Categorization
+
+**What it does**: Uses Google Gemini AI to extract structured transaction data (amount, category, description, date) from unstructured input. The AI understands context, monetary expressions, and semantic categorization rules.
+
+**Implementation**:
+- `bot/services/ai_service.py` - `AIService.parse_transaction()` method
+- Handles three input types: text, image (OCR), and audio (speech-to-text)
+- Validates and normalizes AI responses before saving to database
+
+**Key features**:
+- Multimodal AI (text, vision, audio)
+- Colombian Spanish context awareness
+- Automatic category matching from user's available categories
+- Date parsing with timezone handling (America/Bogota)
+
+### Natural Language Analytics (Questions → SQL → Answers)
+
+**What it does**: Users can ask questions in natural language about their finances, and the bot generates SQL queries, executes them safely, and interprets results into friendly responses.
+
+**Implementation**:
+- `bot/handlers/natural_language.py` - `_handle_query()` function routes analytics questions
+- `bot/services/analytics_service.py` - `AnalyticsService.answer_question()` method
+- Three-step process: (1) Generate SQL from question, (2) Validate and execute safely, (3) Interpret results with AI
+
+**Key features**:
+- Read-only SQL generation (only SELECT queries allowed)
+- Multi-layer security (destructive intent detection, SQL validation, user_id filtering)
+- Timezone-aware queries (converts UTC to Colombia timezone)
+- Friendly responses in Colombian Spanish with proper currency formatting
+
+### Personal Finance Dashboard
+
+**What it does**: Web-based dashboard accessible via Telegram link that shows transaction history, income/expense totals, and balance. Uses JWT tokens for secure authentication.
+
+**Implementation**:
+- `dashboard.py` - Flask application with JWT-based authentication
+- `templates/dashboard.html` - HTML template for displaying transactions
+- Accessible via `/dashboard` command in Telegram, which generates a secure link
+
+**Key features**:
+- JWT token authentication (tokens expire for security)
+- Transaction list with category, amount, date, description
+- Income/expense totals and balance calculation
+- Session-based access control
+
+### User Onboarding and Settings
+
+**What it does**: Interactive onboarding flow for new users to set up default categories and try a demo transaction. Comprehensive settings menu for managing preferences, categories, budgets, and account.
+
+**Implementation**:
+- `bot/handlers/onboarding.py` - Multi-step conversation handler for new user setup
+- `bot/handlers/core.py` - Settings menu handlers and navigation
+- `bot/keyboards.py` - Inline keyboard builders for menus
+
+**Key features**:
+- Category selection during onboarding
+- Demo transaction to show AI capabilities
+- Settings menu with sub-menus (categories, budgets, export, stats, etc.)
+- Currency selection (defaults to COP - Colombian Peso)
+- Account reset functionality
+
+### Category Management
+
+**What it does**: Users can create, rename, and delete custom categories for expenses and income. Default categories are provided but can be customized.
+
+**Implementation**:
+- `bot/handlers/categories.py` - Conversation handler for category CRUD operations
+- `bot/services/categories.py` - Business logic for category creation and management
+- `models.py` - `Category` model with `CategoryType` enum (INCOME/EXPENSE)
+
+**Key features**:
+- Default categories created automatically (Comida, Transporte, Casa, etc.)
+- Custom category creation
+- Category renaming and deletion
+- Type enforcement (expense vs. income categories)
+
+### Budget Management
+
+**What it does**: Users can set monthly budgets per category and track spending against those budgets.
+
+**Implementation**:
+- `bot/handlers/budgets.py` - Conversation handler for creating and viewing budgets
+- `models.py` - `Budget` model with category association and date ranges
+
+**Key features**:
+- Budget creation per category
+- Date range specification (start_date, end_date)
+- Budget viewing and tracking
+
+### Savings Goals
+
+**What it does**: Users can create savings goals with target amounts and deadlines, then contribute to them over time.
+
+**Implementation**:
+- `bot/handlers/goals.py` - Conversation handlers for goal creation and contributions
+- `models.py` - `Goal` model with target_amount, current_amount, and optional deadline
+
+**Key features**:
+- Goal creation with name, target amount, and optional deadline
+- Contribution tracking (adds to current_amount)
+- Progress tracking
+
+### Reporting and Export
+
+**What it does**: Generates monthly expense reports with pie charts and exports all transaction data to Excel files.
+
+**Implementation**:
+- `bot/handlers/reporting.py` - Handlers for monthly reports and Excel export
+- Uses `matplotlib` for chart generation
+- Uses `pandas` and `openpyxl` for Excel export
+
+**Key features**:
+- Monthly expense distribution pie chart
+- Excel export with all transaction details
+- Category-wise aggregation
+- Timezone-aware date filtering
+
+### Transaction Management
+
+**What it does**: Users can view recent transactions, delete transactions, and manually register expenses/income through guided flows.
+
+**Implementation**:
+- `bot/handlers/transactions.py` - Handlers for manual transaction entry and viewing
+- Conversation handlers for expense/income flows with amount → category → description steps
+
+**Key features**:
+- Manual transaction entry (alternative to natural language)
+- Recent transactions view
+- Transaction deletion
+- Category selection from user's available categories
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## 3. Tech Stack
 
-### Stack Tecnológico
+### Programming Language
 
-#### Core
-- **Python**: 3.12.6
-- **Framework Bot**: `python-telegram-bot[webhooks]==20.8`
-- **Base de Datos**: PostgreSQL (`psycopg2-binary==2.9.9`)
-- **ORM**: SQLAlchemy 2.0.34
-- **Migraciones**: Alembic 1.13.2
+**Python 3.10+** (as specified in `Dockerfile`)
 
-#### IA y Multimodal
-- **Motor de IA**: `google-generativeai>=0.8.0` (Gemini 2.5 Flash)
-- **Procesamiento de Imágenes**: `Pillow>=10.0.0`
-- **Procesamiento Nativo**: Gemini procesa imágenes (JPEG/PNG) y audio (OGG) directamente, sin librerías intermedias de OCR/STT
+### Frameworks and Libraries
 
-#### Web y Reportes
-- **Framework Web**: Flask 3.0.3
-- **Servidor WSGI**: gunicorn 22.0.0
-- **Análisis de Datos**: pandas 2.2.3
-- **Visualización**: matplotlib 3.9.2
-- **Exportación**: openpyxl 3.1.5
+**Telegram Bot Framework**:
+- `python-telegram-bot[webhooks]==20.8` - Modern async Telegram bot framework
+  - Used in: `bot/application.py`, all handler files
+  - Supports webhooks for production deployment
 
-#### Utilidades
-- **Autenticación**: PyJWT 2.9.0
-- **Fechas**: python-dateutil 2.9.0
-- **Configuración**: python-dotenv 1.0.1
-- **Testing**: pytest, pytest-mock, pytest-asyncio
+**Web Framework**:
+- `Flask==3.0.3` - Lightweight web framework for dashboard
+  - Used in: `dashboard.py`
+  - Handles JWT authentication and session management
 
-### Estructura de Directorios
+**Database ORM and Migrations**:
+- `SQLAlchemy==2.0.34` - Modern ORM with async support
+  - Used in: `models.py`, `database.py`, all service files
+  - Declarative base model pattern
+- `Alembic==1.13.2` - Database migration tool
+  - Used in: `migrations/` directory
+  - Version-controlled schema changes
+
+**AI/LLM Services**:
+- `google-generativeai>=0.8.0` - Google Gemini API client
+  - Used in: `bot/services/ai_service.py`, `bot/services/analytics_service.py`
+  - Model: `gemini-2.5-flash` for fast, cost-effective inference
+  - Multimodal capabilities (text, vision, audio)
+
+**Data Processing**:
+- `pandas==2.2.3` - Data manipulation for reports and exports
+  - Used in: `bot/handlers/reporting.py`
+- `matplotlib==3.9.2` - Chart generation for monthly reports
+  - Used in: `bot/handlers/reporting.py`
+- `openpyxl==3.1.5` - Excel file generation
+  - Used in: `bot/handlers/reporting.py`
+
+**Image Processing**:
+- `Pillow>=10.0.0` - Image manipulation for receipt OCR
+  - Used in: `bot/services/ai_service.py` for processing photo bytes
+
+**Authentication**:
+- `PyJWT==2.9.0` - JWT token generation and validation
+  - Used in: `dashboard.py` for secure dashboard access
+
+**Utilities**:
+- `python-dateutil==2.9.0` - Date parsing and manipulation
+- `python-dotenv==1.0.1` - Environment variable management
+
+**Database Driver**:
+- `psycopg2-binary==2.9.9` - PostgreSQL adapter
+  - Used in: `database.py` for database connections
+
+**Server**:
+- `gunicorn==22.0.0` - WSGI HTTP server for production deployment
+
+**Testing**:
+- `pytest`, `pytest-mock`, `pytest-asyncio` - Testing framework
+  - Used in: `tests/` directory
+
+### Database
+
+**PostgreSQL** (inferred from `psycopg2-binary` dependency and `DATABASE_URL` environment variable)
+
+- Connection configured in `database.py` via `DATABASE_URL` environment variable
+- Uses SQLAlchemy ORM for all database operations
+- Schema managed via Alembic migrations in `migrations/versions/`
+
+### Deployment
+
+**Docker**:
+- `Dockerfile` - Containerizes the application
+- Python 3.10 slim base image
+- Production-ready setup with environment variables
+
+**Webhooks**:
+- Telegram webhook mode (not polling)
+- Configured via `WEBHOOK_URL` and `WEBHOOK_PATH` environment variables
+- Handles all update types (`Update.ALL_TYPES`)
+
+### Other Tools
+
+- **Alembic** - Database migrations (see `migrations/` directory)
+- **Environment Variables** - Configuration via `.env` file (not committed)
+- **Logging** - Structured logging throughout the application (see `bot/common.py`)
+
+---
+
+## 4. Architecture & Folder Structure
+
+### High-Level Architecture
+
+The application follows a **layered architecture**:
+
+1. **Telegram Bot Layer** (`bot/application.py`, `bot/handlers/`) - Handles user interactions via Telegram
+2. **Services Layer** (`bot/services/`) - Business logic and external integrations (AI, analytics, categories)
+3. **Data Access Layer** (`models.py`, `database.py`) - ORM models and database session management
+4. **Web Dashboard Layer** (`dashboard.py`, `templates/`) - Flask web application for detailed views
+5. **Utilities Layer** (`bot/utils/`) - Shared helper functions
+
+The bot uses **conversation handlers** for multi-step flows (onboarding, transaction entry, category management) and **message handlers** for natural language processing.
+
+### Folder Structure
 
 ```
-telegram_finbot/
-├── bot/                          # Módulo principal del bot
-│   ├── application.py           # ⭐ CORAZÓN: Builder de aplicación y registro de handlers
-│   ├── common.py                # Utilidades compartidas (logging, debug)
-│   ├── conversation_states.py  # Constantes de estados para ConversationHandlers
-│   ├── keyboards.py             # Factories de teclados inline y reply
-│   ├── handlers/                # Handlers de comandos y callbacks
-│   │   ├── core.py             # Dashboard, settings, guía de usuario
-│   │   ├── transactions.py     # Flujos de registro de gastos/ingresos
-│   │   ├── categories.py        # Gestión de categorías (CRUD)
-│   │   ├── budgets.py          # Creación y visualización de presupuestos
-│   │   ├── goals.py            # Creación y aportes a metas
-│   │   ├── reporting.py        # Reportes mensuales y exportación Excel
-│   │   ├── onboarding.py       # Flujo de bienvenida para nuevos usuarios
-│   │   ├── natural_language.py # ⭐ Router Inteligente: Clasificación REGISTER/QUERY y procesamiento de texto
-│   │   └── media_handler.py    # ⭐ Procesamiento multimodal: Fotos (OCR) y voz (STT)
-│   ├── services/               # ⭐ Servicios de IA y lógica de negocio
-│   │   ├── ai_service.py       # ⭐ Cliente Gemini Multimodal: Parsing de transacciones y transcripción
-│   │   ├── analytics_service.py # ⭐ Analista SQL: Text-to-SQL seguro para consultas financieras
-│   │   └── categories.py       # Helpers para gestión de categorías
-│   └── utils/                  # Utilidades generales
-│       ├── amounts.py          # Parsing y formateo de montos monetarios
-│       ├── callback_manager.py # Sistema robusto para manejo de callback_data (validación 64 bytes)
-│       └── time_utils.py       # ⭐ Utilidades de timezone (UTC-aware, conversión a America/Bogota)
-├── migrations/                  # Migraciones de base de datos (Alembic)
-├── database.py                 # Configuración SQLAlchemy (engine, session, Base)
-├── models.py                   # ⭐ CORAZÓN: Modelos ORM (User, Category, Transaction, Budget, Goal)
-├── main.py                     # ⭐ ENTRY POINT: Inicialización y arranque del webhook
-├── dashboard.py                # Aplicación Flask para dashboard web
-└── requirements.txt            # Dependencias Python
+finbot-public-portfolio/
+├── bot/                          # Telegram bot application
+│   ├── __init__.py               # Bot package initialization
+│   ├── application.py            # Main bot application builder and handler registration
+│   ├── common.py                 # Shared utilities (logging, error handling)
+│   ├── conversation_states.py    # State constants for conversation handlers
+│   ├── keyboards.py               # Inline keyboard builders for menus
+│   ├── handlers/                 # Telegram message/command handlers
+│   │   ├── budgets.py            # Budget creation and viewing
+│   │   ├── categories.py         # Category CRUD operations
+│   │   ├── core.py               # Settings menu, dashboard, user guide
+│   │   ├── goals.py              # Savings goals creation and contributions
+│   │   ├── media_handler.py      # Voice messages and photo processing
+│   │   ├── natural_language.py   # Text message processing (transactions + analytics)
+│   │   ├── onboarding.py         # New user onboarding flow
+│   │   ├── reporting.py          # Monthly reports and Excel export
+│   │   └── transactions.py        # Manual transaction entry and viewing
+│   ├── services/                 # Business logic and external services
+│   │   ├── ai_service.py         # Google Gemini integration for transaction parsing
+│   │   ├── analytics_service.py  # Natural language to SQL analytics
+│   │   └── categories.py         # Category management business logic
+│   └── utils/                    # Shared utilities
+│       ├── amounts.py            # Currency formatting
+│       ├── callback_manager.py   # Callback data encoding/decoding
+│       └── time_utils.py         # Timezone conversion utilities
+├── migrations/                   # Alembic database migrations
+│   ├── env.py                   # Alembic environment configuration
+│   ├── script.py.mako           # Migration template
+│   └── versions/                # Migration versions
+│       └── a418b1819e67_initial_schema.py  # Initial database schema
+├── templates/                    # Flask templates
+│   └── dashboard.html           # Dashboard HTML template
+├── tests/                       # Test suite
+│   ├── test_callback_manager.py
+│   ├── test_integration_flows.py
+│   └── test_main.py
+├── database.py                  # Database connection and session management
+├── dashboard.py                 # Flask web dashboard application
+├── main.py                      # Application entry point (webhook server)
+├── models.py                    # SQLAlchemy ORM models
+├── requirements.txt             # Python dependencies
+├── Dockerfile                   # Docker container definition
+├── alembic.ini                  # Alembic configuration
+└── PROJECT_CONTEXT.md           # This file
 ```
 
-### Componentes Clave de la Arquitectura
+### Key Responsibilities
 
-#### 1. **Router de Lenguaje Natural** (`bot/handlers/natural_language.py`)
-- **Función**: Clasifica intenciones (REGISTER vs QUERY) y enruta al handler apropiado
-- **Clasificación**: Usa Gemini 2.5 Flash para determinar si el usuario quiere registrar una transacción o consultar datos
-- **Unificación**: Compartido entre texto y voz (después de transcripción)
+**`bot/handlers/`** - Telegram handlers for user interactions
+- Each file handles a specific domain (budgets, categories, transactions, etc.)
+- Uses conversation handlers for multi-step flows
+- Message handlers for natural language processing
+- Callback query handlers for inline button interactions
 
-#### 2. **Servicio de IA Multimodal** (`bot/services/ai_service.py`)
-- **Clase**: `AIService` (singleton)
-- **Capacidades**:
-  - **Parsing de Transacciones**: Extrae monto, categoría, descripción, tipo y fecha desde texto, imagen o audio
-  - **Transcripción de Audio**: Convierte notas de voz a texto literal (sin interpretación)
-- **Modelo**: Gemini 2.5 Flash con procesamiento nativo de imágenes y audio
-- **Prompts Especializados**: Jerga colombiana, fechas relativas, categorización semántica
+**`bot/services/`** - Business logic and external integrations
+- `ai_service.py`: Wraps Google Gemini API for transaction parsing (text, image, audio)
+- `analytics_service.py`: Natural language to SQL conversion with safety validation
+- `categories.py`: Category creation and management logic
 
-#### 3. **Analista SQL** (`bot/services/analytics_service.py`)
-- **Clase**: `AnalyticsService` (singleton)
-- **Arquitectura Segura**: Text-to-SQL con múltiples capas de seguridad
-- **Flujo**:
-  1. Generación SQL con Gemini (solo SELECT)
-  2. Validación estricta de seguridad
-  3. Ejecución en modo lectura
-  4. Interpretación de resultados con IA
-- **Guardrails**: 5 capas de protección contra intenciones destructivas
+**`bot/utils/`** - Shared utilities
+- `amounts.py`: Currency formatting (Colombian Peso format)
+- `callback_manager.py`: Encodes/decodes callback data for inline buttons
+- `time_utils.py`: Timezone conversion (UTC ↔ America/Bogota)
 
-#### 4. **Procesador Multimodal** (`bot/handlers/media_handler.py`)
-- **Fotos**: OCR automático de facturas/recibos usando visión de Gemini
-- **Voz**: Transcripción a texto y reutilización de lógica de texto
-- **UX**: ChatActions para mitigar percepción de latencia
+**`migrations/`** - Database schema version control
+- Alembic migrations for schema changes
+- Initial schema creates: users, categories, transactions, budgets, goals
+
+**`models.py`** - Data models
+- SQLAlchemy declarative models
+- Defines relationships (User → Categories, Transactions, Budgets, Goals)
+
+**`database.py`** - Database configuration
+- Creates SQLAlchemy engine and session factory
+- Handles `DATABASE_URL` environment variable parsing
+- Connection pooling and session management
+
+**`dashboard.py`** - Web dashboard
+- Flask application for web-based transaction viewing
+- JWT authentication for secure access
+- Renders transaction list with income/expense totals
+
+**`main.py`** - Application entry point
+- Initializes database schema
+- Configures logging
+- Sets up Telegram webhook server
+- Runs on configurable port (default 8000)
 
 ---
 
-## 🎨 Patrones de Diseño
+## 5. Data Model
 
-### 1. **Global Menu Priority** (Prioridad Global del Menú)
-**Ubicación**: `bot/application.py:351-356`
+The application uses a **relational database model** with five main entities:
 
-Los botones del menú principal se registran **ANTES** de los ConversationHandlers para que actúen como "comandos globales" que cancelan cualquier flujo activo.
+### User
 
+**Purpose**: Represents a Telegram user and stores their preferences.
+
+**Key Fields**:
+- `telegram_id` (BigInteger, PK) - Telegram user ID (unique identifier)
+- `chat_id` (BigInteger) - Telegram chat ID for sending messages
+- `default_currency` (String) - User's preferred currency (default: "COP")
+- `is_onboarded` (Boolean) - Whether user has completed onboarding
+
+**Relationships**:
+- One-to-many with `Category` (cascade delete)
+- One-to-many with `Transaction` (cascade delete)
+- One-to-many with `Budget` (cascade delete)
+- One-to-many with `Goal` (cascade delete)
+
+**Usage**: Created automatically on first interaction. Stores user preferences and onboarding status.
+
+### Category
+
+**Purpose**: Categorizes transactions as either income or expense. Each user has their own set of categories.
+
+**Key Fields**:
+- `id` (Integer, PK) - Auto-incrementing primary key
+- `user_id` (BigInteger, FK → users.telegram_id) - Owner of the category
+- `name` (String) - Category name (e.g., "Comida", "Transporte")
+- `type` (Enum: INCOME/EXPENSE) - Whether category is for income or expenses
+- `is_default` (Boolean) - Whether this is a default category (cannot be deleted)
+
+**Relationships**:
+- Many-to-one with `User`
+- One-to-many with `Transaction` (cascade delete)
+- One-to-many with `Budget` (cascade delete)
+
+**Usage**: Categories are used to classify transactions and set budgets. Default categories are created during onboarding, but users can create custom ones.
+
+### Transaction
+
+**Purpose**: Records individual income or expense transactions.
+
+**Key Fields**:
+- `id` (Integer, PK) - Auto-incrementing primary key
+- `user_id` (BigInteger, FK → users.telegram_id) - Owner of the transaction
+- `category_id` (Integer, FK → categories.id) - Category classification
+- `amount` (Numeric(10, 2)) - Transaction amount (always positive, type determined by category)
+- `transaction_date` (DateTime) - When the transaction occurred (stored in UTC)
+- `description` (String, nullable) - Optional description extracted from user input
+
+**Relationships**:
+- Many-to-one with `User`
+- Many-to-one with `Category`
+
+**Usage**: Core entity for tracking finances. Created via natural language parsing, manual entry, or OCR from photos. Amounts are stored as positive numbers; the category type determines if it's income or expense.
+
+### Budget
+
+**Purpose**: Defines spending limits per category for a specific time period.
+
+**Key Fields**:
+- `id` (Integer, PK) - Auto-incrementing primary key
+- `user_id` (BigInteger, FK → users.telegram_id) - Owner of the budget
+- `category_id` (Integer, FK → categories.id) - Category this budget applies to
+- `amount` (Numeric(10, 2)) - Budget limit amount
+- `start_date` (Date) - Budget period start
+- `end_date` (Date) - Budget period end
+
+**Relationships**:
+- Many-to-one with `User`
+- Many-to-one with `Category`
+
+**Usage**: Users set monthly budgets per category. The application can compare actual spending (from transactions) against budget limits.
+
+### Goal
+
+**Purpose**: Represents savings goals with target amounts and progress tracking.
+
+**Key Fields**:
+- `id` (Integer, PK) - Auto-incrementing primary key
+- `user_id` (BigInteger, FK → users.telegram_id) - Owner of the goal
+- `name` (String) - Goal name (e.g., "Vacaciones", "Emergencia")
+- `target_amount` (Numeric(10, 2)) - Target savings amount
+- `current_amount` (Numeric(10, 2)) - Current progress (default: 0)
+- `deadline` (Date, nullable) - Optional deadline for the goal
+
+**Relationships**:
+- Many-to-one with `User`
+
+**Usage**: Users create savings goals and make contributions over time. The bot tracks progress toward the target amount.
+
+### Design Decisions
+
+- **Cascade Deletes**: When a user is deleted, all their categories, transactions, budgets, and goals are automatically deleted (data privacy)
+- **UTC Timestamps**: All `transaction_date` values are stored in UTC and converted to Colombia timezone (America/Bogota) when displayed or queried
+- **Positive Amounts**: Transaction amounts are always positive; the category type determines if it's income or expense
+- **User-Scoped Categories**: Categories are per-user (not global), allowing customization
+- **Default Categories**: Some categories are marked as `is_default=True` and cannot be deleted (e.g., "General", "General Ingreso")
+
+---
+
+## 6. AI & Analytics Layer (Sanitized Overview)
+
+### AI Service Architecture
+
+The application uses **Google Gemini 2.5 Flash** for multimodal AI processing. The AI service is implemented as a singleton pattern (`bot/services/ai_service.py`) to reuse the same model instance across requests.
+
+### Transaction Parsing (Multimodal)
+
+**How it works**:
+
+1. **Input Processing**: The service accepts three input types:
+   - Text: Natural language transaction description
+   - Image: Photo bytes (typically receipts/bills)
+   - Audio: Voice message bytes (OGG format from Telegram)
+
+2. **AI Prompt Construction**: Different prompts are built based on input type:
+   - Text prompt: Includes user's categories, date context, and extraction instructions
+   - Image prompt: OCR-focused prompt for receipt analysis
+   - Audio prompt: Speech-to-text transcription with transaction extraction
+
+3. **AI Response Processing**:
+   - Gemini API is called with the appropriate prompt and media
+   - Response is parsed as JSON (handles markdown code blocks)
+   - Response is validated and normalized:
+     - Amount converted to Decimal with 2 decimal places
+     - Category ID validated against user's available categories
+     - Type validated (expense/income) and matched to category type
+     - Date parsed and validated (YYYY-MM-DD format)
+
+4. **Timezone Handling**: Dates are interpreted in Colombia timezone (America/Bogota) context, then stored as UTC in the database.
+
+**Key Features**:
+- Understands Colombian monetary slang ("lucas", "palos", "k" for thousands)
+- Handles relative dates ("ayer", "hoy", "antier")
+- Semantic categorization (matches transaction description to appropriate category)
+- Multimodal support (text, vision, audio)
+
+**Files**:
+- `bot/services/ai_service.py` - `AIService.parse_transaction()`
+- `bot/handlers/natural_language.py` - `_handle_register()` - Uses AI service for text
+- `bot/handlers/media_handler.py` - `handle_photo_message()`, `handle_voice_message()` - Uses AI service for media
+
+### Natural Language Analytics (Text-to-SQL)
+
+**How it works**:
+
+1. **Intent Classification**: First, the system classifies whether the user wants to:
+   - **REGISTER** a transaction (e.g., "Gasté 20k")
+   - **QUERY** financial data (e.g., "¿Cuánto gasté este mes?")
+
+2. **SQL Generation** (for queries):
+   - User's question is sent to Gemini with database schema information
+   - AI generates a SQL SELECT query based on the question
+   - Schema includes: table structures, relationships, timezone conversion rules
+   - AI is instructed to only generate SELECT queries (read-only)
+
+3. **SQL Safety Validation**:
+   - Query is validated to ensure it starts with SELECT
+   - Dangerous keywords are blocked (DROP, DELETE, INSERT, UPDATE, etc.)
+   - Multiple statements are prevented (no semicolons)
+   - System function calls are blocked
+   - User ID filtering is encouraged (though not enforced at SQL level)
+
+4. **Query Execution**:
+   - Validated SQL is executed using SQLAlchemy's `text()` function
+   - Results are returned as list of dictionaries
+
+5. **Result Interpretation**:
+   - Query results are sent back to Gemini for interpretation
+   - AI generates a friendly response in Colombian Spanish
+   - Currency is formatted in Colombian format (punto for thousands, coma for decimals)
+   - Emojis are used when appropriate
+
+**Security Measures**:
+- **Multi-layer validation**: Intent classification → SQL generation → SQL validation → Result interpretation
+- **Destructive intent detection**: Keywords like "borrar", "eliminar" trigger rejection
+- **Read-only enforcement**: Only SELECT queries are allowed
+- **User isolation**: All queries should filter by `user_id` (enforced in prompt, validated in code)
+
+**Files**:
+- `bot/services/analytics_service.py` - `AnalyticsService.answer_question()`
+- `bot/handlers/natural_language.py` - `_handle_query()` - Routes analytics questions
+
+### Prompt Sanitization
+
+**Note**: The actual prompts used in production contain proprietary business logic including:
+- Colombian slang and monetary expressions
+- Semantic categorization rules
+- Timezone handling specifics
+- Detailed extraction instructions
+
+For this public portfolio version, prompts are simplified and can be configured via environment variables:
+- `AI_TEXT_PROMPT` - Text transaction parsing prompt
+- `AI_IMAGE_PROMPT` - Image OCR prompt
+- `AI_AUDIO_PROMPT` - Audio transcription prompt
+
+The analytics service prompt is also simplified but maintains the core structure (schema info, safety rules, interpretation guidelines).
+
+---
+
+## 7. Key Design Patterns & Practices
+
+### Conversation Handlers
+
+The bot uses Telegram's `ConversationHandler` pattern for multi-step flows:
+- **Onboarding**: Welcome → Demo → Category Selection → Complete
+- **Transaction Entry**: Amount → Category → Description (optional)
+- **Category Management**: Menu → Action (Add/Rename/Delete) → Input
+- **Budget Creation**: Category Selection → Amount Input
+- **Goal Creation**: Name Input → Target Amount Input
+
+Each conversation handler has:
+- Entry points (commands or callback queries)
+- State definitions (what responses are expected at each step)
+- Fallback handlers (cancel commands)
+
+### Singleton Services
+
+AI and analytics services use singleton pattern to avoid recreating model instances:
+- `get_ai_service()` - Returns singleton `AIService` instance
+- `get_analytics_service()` - Returns singleton `AnalyticsService` instance
+
+### Session Management
+
+Database sessions are managed using context managers:
 ```python
-# CRÍTICO: Handlers de botones del menú principal DEBEN estar ANTES
-application.add_handler(MessageHandler(filters.Regex(r"^📈 Dashboard$"), dashboard))
-application.add_handler(MessageHandler(filters.Regex(r"^📊 Reporte$"), monthly_report))
-application.add_handler(MessageHandler(filters.Regex(r"^🎯 Metas$"), goals_menu))
-application.add_handler(MessageHandler(filters.Regex(r"^⚙️ Ajustes$"), settings_menu))
-# Luego ConversationHandlers
+with SessionLocal() as session:
+    # Database operations
+    session.commit()
 ```
 
-**Comportamiento Crítico**: Los botones del menú interrumpen y cancelan cualquier flujo activo (`ConversationHandler`). Esto significa que si un usuario está en medio de un flujo de registro de transacción, presupuesto o cualquier otro `ConversationHandler`, presionar cualquier botón del menú principal (📊 Reporte, 📈 Dashboard, 🎯 Metas, ⚙️ Ajustes) cancelará inmediatamente ese flujo y ejecutará la acción del botón.
+This ensures proper cleanup and transaction handling.
 
-**Regla UX de Limpieza de Contexto**:
-- **Para flujos cortos**: Se limpia el `context.user_data` al cancelar (reset completo)
-- **Para flujos largos (onboarding)**: Se evalúa si guardar progreso antes de cancelar, o permitir reanudar desde el último punto guardado
+### Error Handling
 
-**Beneficio**: Los usuarios pueden cancelar flujos activos presionando cualquier botón del menú principal, proporcionando una forma intuitiva de "escapar" de cualquier flujo conversacional.
+- Centralized error logging in `bot/common.py` (`log_error()`)
+- Handler-level error handling with user-friendly messages
+- AI service errors are caught and converted to user-friendly responses
 
-### 2. **Invisible UI / AI-First** (UI Invisible / IA Primero)
-**Filosofía**: Menos botones, más chat natural. La interfaz visual se minimiza para priorizar la interacción por lenguaje natural.
+### Callback Data Management
 
-**Características**:
-- Los usuarios pueden escribir libremente: "Gaste 20k en comida"
-- El bot clasifica automáticamente la intención
-- No requiere navegar por menús para tareas comunes
-- El menú principal tiene solo 4 botones esenciales: Reporte, Dashboard, Metas, Ajustes
-- Los comandos de registro (`/gasto`, `/ingreso`) existen pero están "ocultos" (no aparecen en el menú)
-- El onboarding enseña a usar lenguaje natural desde el inicio
-- Los botones son atajos opcionales, no requisitos
+Inline button callbacks use a structured encoding system (`bot/utils/callback_manager.py`):
+- Format: `{type}:{action}:{id}`
+- Types: `CATEGORY`, `BUDGETS`, `GOALS`, `SETTINGS`, etc.
+- Prevents callback data conflicts and makes debugging easier
 
-**Ubicación**: `bot/keyboards.py:118-121`, `bot/handlers/onboarding.py:38-46`
+### Timezone Handling
 
-**Beneficio**: Reduce la fricción cognitiva y promueve una experiencia más conversacional y natural.
-
-### 3. **Speech-to-Text Pipeline Unificado**
-**Flujo**: Voz → Transcripción → Router Inteligente → Registro/Consulta
-
-1. Usuario envía nota de voz
-2. `AIService.transcribe_audio()` convierte a texto literal
-3. `process_user_text_input()` procesa el texto (misma lógica que texto)
-4. Router clasifica y enruta a registro o consulta
-
-**Beneficio**: Las notas de voz funcionan tanto para registro como para consultas analíticas.
-
-### 4. **Service Layer Pattern**
-- `AIService`: Encapsula interacción con Gemini (multimodal)
-- `AnalyticsService`: Encapsula generación SQL segura y análisis
-- `categories.py`: Lógica de negocio reutilizable para categorías
-
-### 5. **State Machine Pattern**
-- `conversation_states.py`: Define estados para `ConversationHandler`
-- Permite flujos conversacionales guiados (onboarding, transacciones, presupuestos)
-
-### 6. **Robust Callback Handling Pattern**
-- `CallbackManager`: Generación y parsing seguro de `callback_data`
-- Validación automática de límite de 64 bytes de Telegram
-- Prefijos cortos para ahorrar bytes
-
-### 7. **Educational Error Handling** (Manejo Educativo de Errores)
-**Filosofía**: Los errores no solo informan, sino que enseñan al usuario cómo usar la IA.
-
-**Implementación**:
-- Cuando el usuario usa comandos legacy (`/gasto`, `/ingreso`), después de completar la transacción se muestra un "Tip" educativo:
-  - `"💡 **Tip:** La próxima vez no necesitas comandos. Solo escríbeme 'Gaste 50k' y yo hago el resto."`
-- Los mensajes de error incluyen ejemplos de uso correcto:
-  - `"😅 No entendí bien ese gasto.\n\nIntenta así:\n• _'Gaste 20k en taxi'_\n• _'Recibí 500k de nómina'_"`
-
-**Ubicación**: `bot/handlers/transactions.py:252, 327, 414, 472`, `bot/handlers/natural_language.py:257-263`
-
-**Beneficio**: Los usuarios aprenden progresivamente a usar el bot de forma más natural, migrando de comandos a lenguaje natural.
-
-### 8. **Modo Degradado (AI Fallback)**
-**Filosofía**: Si los servicios de IA fallan, el bot debe degradarse elegantemente sin bloquear al usuario.
-
-**Implementación**:
-- Detección de fallos repetidos (3+ intentos fallidos en < 1 minuto)
-- Informar al usuario: "⚠️ Mi motor de IA tiene problemas"
-- Habilitar/sugerir explícitamente los flujos manuales (`/gasto`, `/ingreso`) como respaldo temporal
-- Desactivar funcionalidades avanzadas (lenguaje natural, OCR, STT) mientras se mantienen activos los comandos manuales
-
-**Ubicación**: `bot/services/ai_service.py`, `bot/application.py`
-
-**Beneficio**: El usuario nunca queda completamente bloqueado. Siempre hay una forma de registrar transacciones, aunque sea menos elegante.
+All dates are stored in UTC but displayed/queried in Colombia timezone:
+- `bot/utils/time_utils.py` - Conversion utilities
+- `convert_utc_to_local()` - Converts UTC to America/Bogota
+- Used in AI date processing, analytics queries, and report generation
 
 ---
 
-## 🔐 Reglas de Oro (Golden Rules)
+## 8. Security Considerations
 
-### 1. **Timezones: Conversión Explícita a `America/Bogota`**
+### Authentication
 
-#### En SQL (Queries Analíticas)
-**SIEMPRE** convertir `transaction_date` a hora Colombia antes de comparar:
+- **Dashboard**: JWT tokens with expiration for secure web access
+- **Telegram**: Uses Telegram's built-in authentication (users are identified by `telegram_id`)
 
-```sql
-WHERE (transaction_date AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date = '2025-12-02'
-```
+### SQL Injection Prevention
 
-**Razón**: Previene problemas donde después de las 7 PM en Colombia el bot busca gastos del día siguiente.
+- **Parameterized Queries**: SQLAlchemy ORM prevents SQL injection
+- **Analytics Service**: Raw SQL is validated before execution, but user input is never directly interpolated into queries
+- **Read-Only Enforcement**: Analytics service only allows SELECT queries
 
-**Ubicación**: `bot/services/analytics_service.py:189-193`
+### Data Isolation
 
-#### En Python (Procesamiento de Fechas)
-- **Almacenamiento**: Todas las fechas en UTC (timezone-aware)
-- **Contexto de IA**: Convertir a hora Colombia antes de pasarla a prompts
-- **Fechas de "hoy"**: Usar hora exacta UTC para preservar orden cronológico
-- **Otras fechas**: Usar mediodía UTC para evitar problemas de timezone
+- All queries filter by `user_id` to ensure users only see their own data
+- Cascade deletes ensure data cleanup when users are removed
 
-**Ubicación**: `bot/utils/time_utils.py`, `bot/handlers/natural_language.py:24-78`
+### Environment Variables
 
-### 2. **Seguridad: Guardrails Anti-Borrado y Validación de Solo SELECT**
+- Sensitive data (API keys, database URLs, secrets) are stored in environment variables
+- `.env` file is not committed to repository (see `.gitignore`)
 
-#### Múltiples Capas de Protección
-1. **Detección Temprana**: `_has_destructive_intent()` filtra palabras clave destructivas
-2. **Prompt Read-Only**: Reglas explícitas en prompt para evitar alucinación de acciones
-3. **Validación SQL**: Solo SELECT permitido, sin palabras peligrosas
-4. **Verificación de Resultados**: Detección de `ACTION_NOT_ALLOWED` en resultados
-5. **Respuesta Consistente**: Mensaje de rechazo predefinido
+### Input Validation
 
-**Ubicación**: `bot/services/analytics_service.py:113-129, 322-362`
-
-#### Validación de SQL
-```python
-# Debe empezar con SELECT
-# No contiene: DROP, DELETE, INSERT, UPDATE, TRUNCATE, etc.
-# No contiene punto y coma (múltiples queries)
-# No contiene funciones del sistema PostgreSQL peligrosas
-```
-
-### 3. **UX: Uso de `ChatAction` para Latencia**
-
-Las operaciones de IA pueden tomar 7-14 segundos. Los indicadores visuales reducen la ansiedad del usuario.
-
-**Implementación**:
-- `ChatAction.TYPING`: Para procesamiento de texto y consultas
-- `ChatAction.UPLOAD_PHOTO`: Para procesamiento de fotos
-- `ChatAction.RECORD_VOICE`: Para procesamiento de voz
-
-**Ubicación**: 
-- `bot/handlers/natural_language.py:171, 349`
-- `bot/handlers/media_handler.py:50, 195`
-
-### 4. **ENUMs en SQL: Valores en MAYÚSCULAS**
-
-PostgreSQL requiere valores exactos del enum. En prompts SQL, especificar explícitamente:
-- `'EXPENSE'` y `'INCOME'` (MAYÚSCULAS)
-- **NUNCA** usar minúsculas (`'expense'`, `'income'`)
-
-**Ubicación**: `bot/services/analytics_service.py:170, 221`
-
-### 5. **Lógica Unificada: Texto y Voz Comparten Procesamiento**
-
-El manejo de voz reutiliza la lógica de texto para permitir consultas verbales. No solo registra transacciones.
-
-**Flujo**:
-1. Voz → Transcripción (`AIService.transcribe_audio()`)
-2. Texto transcrito → `process_user_text_input()`
-3. Router clasifica → Registro o Consulta
-
-**Ubicación**: `bot/handlers/media_handler.py:166-234`, `bot/handlers/natural_language.py:134-194`
-
-### 6. **Modo Degradado (AI Fallback)**
-
-Si los servicios de IA (Gemini) fallan repetidamente, el bot debe informar al usuario (`'⚠️ Mi motor de IA tiene problemas'`) y habilitar/sugerir explícitamente los flujos manuales (`/gasto`) como respaldo temporal.
-
-**Implementación**:
-- Detección de fallos repetidos (3+ intentos fallidos en < 1 minuto)
-- Mensaje informativo al usuario sobre el problema
-- Sugerencia explícita de usar comandos manuales como alternativa temporal
-- Desactivación temporal de funcionalidades avanzadas (lenguaje natural, OCR, STT)
-
-**Ubicación**: `bot/services/ai_service.py`, `bot/application.py`
-
-**Beneficio**: El usuario nunca queda completamente bloqueado. Siempre hay una forma de registrar transacciones, aunque sea menos elegante.
+- AI responses are validated before saving to database
+- Amounts are validated as positive numbers
+- Dates are validated and normalized
+- Category IDs are validated against user's available categories
 
 ---
 
-## 🔄 Flujos Principales
+## 9. Deployment & Configuration
 
-### Flujo 1: Onboarding de Nuevo Usuario (Show, Don't Tell)
+### Environment Variables
 
-**Arquitectura**: Bienvenida → Demo Interactiva → Selección de Categorías → Menú Principal
+Required environment variables:
+- `TELEGRAM_TOKEN` - Telegram bot token
+- `DATABASE_URL` - PostgreSQL connection string
+- `GEMINI_API_KEY` - Google Gemini API key
+- `WEBHOOK_URL` - Base URL for Telegram webhooks
+- `WEBHOOK_PATH` - Webhook path (default: "telegram-webhook")
+- `PORT` - Server port (default: 8000)
+- `SECRET_KEY` - Secret key for JWT tokens (dashboard)
 
-**Filosofía**: "Show, Don't Tell" - El usuario aprende haciendo, no solo leyendo.
+Optional environment variables:
+- `AI_TEXT_PROMPT` - Custom text parsing prompt
+- `AI_IMAGE_PROMPT` - Custom image OCR prompt
+- `AI_AUDIO_PROMPT` - Custom audio transcription prompt
 
-1. **Bienvenida** (`onboarding_start()`):
-   - Usuario envía `/start` → `onboarding_start()`
-   - Si `user.is_onboarded == False`:
-     - Mensaje de bienvenida personalizado
-     - Presenta opción: "🧪 Probar Demo" o "⚙️ Configurar"
+### Database Setup
 
-2. **Demo Interactiva** (`onboarding_demo_handler()`, `onboarding_demo_process()`):
-   - Si elige "Probar Demo":
-     - Se le pide que escriba o envíe un audio: `"Gaste 20k en almuerzo ayer"`
-     - El bot procesa la transacción en tiempo real usando IA
-     - Muestra el resultado completo: monto, categoría, fecha, descripción
-     - Mensaje: `"¡Así de fácil es! Ahora configuremos tus categorías reales..."`
-   - Si elige "Configurar":
-     - Salta directamente a selección de categorías
-   
-   **Casos Borde**:
-   - **Timeout de Demo**: Si el usuario no interactúa en la Demo (timeout), el bot sugiere suavemente continuar a la configuración.
-   - **Fallo de IA en Primera Interacción**: Si la IA falla en la primera interacción de la Demo, el bot responde con un mensaje de apoyo guiado y ofrece saltar a configuración para no frustrar la primera impresión.
+1. Create PostgreSQL database
+2. Set `DATABASE_URL` environment variable
+3. Run migrations: `alembic upgrade head`
 
-3. **Selección de Categorías** (`onboarding_category_choice()`):
-   - Presenta categorías sugeridas con toggle (✅/⬜️)
-   - Usuario activa/desactiva las que desea
-   - Categorías bloqueadas ("General", "General Ingreso") no se pueden desmarcar
-   - Opción de agregar categorías personalizadas
+### Deployment
 
-4. **Finalización** (`onboarding_finish()`):
-   - Crea usuario si no existe
-   - Crea categorías seleccionadas
-   - Marca `user.is_onboarded = True`
-   - Muestra mensaje educativo sobre uso de lenguaje natural
-   - Muestra menú principal con 4 botones
-
-**Archivos**: `bot/handlers/onboarding.py`, `bot/services/categories.py`
-
-**Beneficio**: El usuario experimenta el poder de la IA antes de configurar, generando confianza y entendimiento inmediato.
-
-### Flujo 2: Registro Multimodal Unificado
-
-**Arquitectura**: Entrada (Texto/Voz/Foto) → Normalización → Router → IA → BD
-
-#### Modo Texto
-1. Usuario envía: "Gaste 20k en comida ayer"
-2. `handle_text_message()` → `process_user_text_input()`
-3. Router clasifica: `_classify_intent()` → "register"
-4. `_handle_register()` → `AIService.parse_transaction()`
-5. Gemini extrae: monto, categoría, descripción, tipo, fecha
-6. Procesamiento de fecha con timezone Colombia
-7. Creación de `Transaction` en BD
-
-#### Modo Foto (OCR)
-1. Usuario envía foto de factura
-2. `handle_photo_message()` descarga foto
-3. `AIService.parse_transaction()` con `image_data`
-4. Gemini procesa imagen nativamente (visión)
-5. Extrae: monto total, comercio, categoría, fecha
-6. Creación de `Transaction` en BD
-
-#### Modo Voz (STT Unificado)
-1. Usuario envía nota de voz
-2. `handle_voice_message()` descarga audio
-3. `AIService.transcribe_audio()` → texto literal
-4. `process_user_text_input()` con texto transcrito
-5. Router clasifica → Registro o Consulta
-6. Misma lógica que texto
-
-**Archivos**: `bot/handlers/natural_language.py`, `bot/handlers/media_handler.py`, `bot/services/ai_service.py`
-
-### Flujo 3: Análisis Inteligente (Text-to-SQL Seguro)
-
-**Arquitectura**: Pregunta → Generación SQL → Validación → Ejecución → Interpretación
-
-1. Usuario pregunta: "¿Cuánto gasté en comida este mes?"
-2. Router clasifica: "query"
-3. `_handle_query()` → `AnalyticsService.answer_question()`
-4. **Paso A - Generación SQL**:
-   - Construye prompt con esquema de BD, fecha Colombia, reglas de seguridad
-   - Gemini genera SQL (solo SELECT)
-5. **Paso B - Validación y Ejecución**:
-   - Valida seguridad (solo SELECT, sin palabras peligrosas)
-   - Ejecuta query con conversión explícita de timezone
-   - Retorna resultados
-6. **Paso C - Interpretación**:
-   - Gemini interpreta resultados numéricos
-   - Genera respuesta amigable en jerga colombiana
-
-**Archivos**: `bot/services/analytics_service.py`, `bot/handlers/natural_language.py:330-375`
-
-### Flujo 4: Registro de Gasto/Ingreso (Flujo Guiado)
-
-1. Usuario presiona "💸 Registrar Gasto" o `/gasto`
-2. Estado `EXPENSE_AMOUNT`: Usuario ingresa monto
-3. Estado `EXPENSE_CATEGORY`: Muestra categorías
-4. Estado `EXPENSE_DESCRIPTION_DECISION`: Pregunta por descripción (opcional)
-5. Crea `Transaction` en BD
-6. Muestra "Tip" educativo: `"💡 **Tip:** La próxima vez no necesitas comandos. Solo escríbeme 'Gaste 50k' y yo hago el resto."`
-
-**Archivos**: `bot/handlers/transactions.py`
-
-### Flujo 5: Multimodal Unificado (Texto y Voz Comparten Lógica)
-
-**Arquitectura Unificada**: Texto y Voz comparten la misma lógica de decisión.
-
-**Confirmación Técnica**:
-- **Texto**: `handle_text_message()` → `process_user_text_input()`
-- **Voz**: `handle_voice_message()` → `AIService.transcribe_audio()` → `process_user_text_input()`
-
-**Función Central**: `process_user_text_input()` (`bot/handlers/natural_language.py:134-194`)
-- Clasifica intención: `_classify_intent()` → "register" o "query"
-- Enruta a: `_handle_register()` o `_handle_query()`
-- Compartida entre texto y voz (después de transcripción)
-
-**Beneficio**: Consistencia total entre modos de entrada. Las notas de voz funcionan tanto para registro como para consultas analíticas.
-
-**Archivos**: `bot/handlers/natural_language.py:134-194`, `bot/handlers/media_handler.py:181-234`
-
----
-
-## 📊 Modelos de Datos
-
-### Esquema de Base de Datos
-
-#### `users`
-- `telegram_id` (PK, BigInteger)
-- `chat_id` (BigInteger)
-- `default_currency` (String, default="COP")
-- `is_onboarded` (Boolean, default=False)
-
-#### `categories`
-- `id` (PK, Integer)
-- `user_id` (FK -> users.telegram_id)
-- `name` (String)
-- `type` (Enum: 'INCOME' | 'EXPENSE')
-- `is_default` (Boolean)
-
-#### `transactions`
-- `id` (PK, Integer)
-- `user_id` (FK -> users.telegram_id)
-- `category_id` (FK -> categories.id)
-- `amount` (Numeric(10, 2))
-- `transaction_date` (DateTime, UTC-aware, default=_get_utc_now)
-- `description` (String, nullable)
-
-#### `budgets`
-- `id` (PK, Integer)
-- `user_id` (FK -> users.telegram_id)
-- `category_id` (FK -> categories.id)
-- `amount` (Numeric(10, 2))
-- `start_date` (Date)
-- `end_date` (Date)
-
-#### `goals`
-- `id` (PK, Integer)
-- `user_id` (FK -> users.telegram_id)
-- `name` (String)
-- `target_amount` (Numeric(10, 2))
-- `current_amount` (Numeric(10, 2), default=0)
-- `deadline` (Date, nullable)
-
-**Archivo**: `models.py`
-
----
-
-## 🛠️ Convenciones y Estándares
-
-### Estilos de Código
-- **Type Hints**: Uso extensivo en todas las funciones
-- **Naming**: `snake_case` para funciones/variables, `PascalCase` para clases
-- **Logging**: Sistema centralizado en `bot/common.py`
-- **Async/Await**: Todos los handlers son async
-- **Gestión de Sesiones**: `with SessionLocal() as session:` en cada handler
-
-### Callback Data Patterns
-- **SIEMPRE usar `CallbackManager`** para generar y parsear
-- **Límite**: 64 bytes (validación automática)
-- **Prefijos cortos**: `c:{id}` para categorías, `s:{action}` para settings, etc.
-
-### Formato de Montos
-- **Entrada**: Acepta `,` o `.` como separador decimal
-- **Salida**: Formato colombiano: `$1.500,50` (punto para miles, coma para decimales)
-- **Validación**: Debe ser positivo
-
-### Manejo de Fechas y Timezones
-- **Almacenamiento**: Siempre UTC (timezone-aware)
-- **Función estándar**: `get_now_utc()` de `bot/utils/time_utils.py`
-- **Conversión**: `convert_utc_to_local()` para visualización
-- **En SQL**: Conversión explícita a `America/Bogota` antes de comparar
-
----
-
-## ✅ Estado de Deuda Técnica
-
-### ✅ RESUELTO: Manejo de Timezone Inconsistente
-- **Estado**: ✅ COMPLETADO
-- **Solución**: 
-  - Estandarizado a `get_now_utc()` de `bot/utils/time_utils.py`
-  - Conversión a hora Colombia para contexto de fechas en prompts
-  - Manejo inteligente de fechas: hora exacta para "hoy", mediodía UTC para fechas pasadas
-  - Conversión explícita de timezone en queries SQL analíticas
-- **Ubicación**: `bot/utils/time_utils.py`, `bot/services/ai_service.py`, `bot/services/analytics_service.py`
-
-### ✅ RESUELTO: Parsing de Callback Data Frágil
-- **Estado**: ✅ COMPLETADO
-- **Solución**: Implementado `CallbackManager` con validación robusta y parsing tipado
-- **Ubicación**: `bot/utils/callback_manager.py`
-
-### ✅ RESUELTO: Falta de Tests
-- **Estado**: ✅ COMPLETADO (Parcial)
-- **Solución**: 
-  - Tests completos para `CallbackManager` (25 tests, todos pasando)
-  - Tests de integración con mocking para flujos completos
-  - Sistema de seguridad multi-capa en `AnalyticsService` actúa como test lógico
-- **Ubicación**: `tests/test_callback_manager.py`, `tests/test_integration_flows.py`
-
-### ⚠️ PENDIENTE: Soporte Multi-Moneda Incompleto
-- **Problema**: `User.default_currency` existe pero `format_currency()` siempre muestra `$`
-- **Impacto**: Usuarios no pueden usar otras monedas aunque la infraestructura existe
-
-### ⚠️ PENDIENTE: Gamificación No Implementada
-- **Problema**: `settings_gamification()` verifica campos que no existen en el modelo `User`
-- **Estado**: Muestra mensaje "en desarrollo"
-
-### ⚠️ PENDIENTE: Falta de Índices en Base de Datos
-- **Problema**: No hay índices explícitos para consultas frecuentes
-- **Impacto**: Consultas pueden ser lentas con muchos registros
-
----
-
-## 🔧 Variables de Entorno
-
+**Docker**:
 ```bash
-TELEGRAM_TOKEN=          # Token del bot de Telegram (obligatorio)
-WEBHOOK_URL=             # URL base del webhook (obligatorio)
-WEBHOOK_PATH=            # Path del webhook (opcional, default: "telegram-webhook")
-PORT=                    # Puerto del servidor (opcional, default: 8000)
-DATABASE_URL=            # Connection string de PostgreSQL (obligatorio)
-SECRET_KEY=              # Clave secreta para JWT del dashboard (obligatorio)
-DASHBOARD_URL=           # URL del dashboard web (opcional)
-GEMINI_API_KEY=          # API Key de Google Gemini (obligatorio para funcionalidad de IA)
+docker build -t finbot .
+docker run -p 8000:8000 --env-file .env finbot
 ```
 
----
-
-## 📝 Comandos del Bot
-
-**Nota de UX**: Estos comandos se documentan con fines técnicos y para 'Power Users'. En la UX general, NO se promueve su uso; el flujo principal es siempre lenguaje natural.
-
-### Menú Principal (4 Botones)
-
-El menú principal se muestra como teclado persistente con 4 botones:
-
-- **📊 Reporte** - Genera reporte mensual con gráfico
-- **📈 Dashboard** - Genera enlace temporal al dashboard web
-- **🎯 Metas** - Crea o aporta a metas de ahorro
-- **⚙️ Ajustes** - Accede a herramientas avanzadas (categorías, presupuestos, exportación, reset)
-
-**Ubicación**: `bot/keyboards.py:118-121`
-
-**Nota**: Los botones del menú principal tienen prioridad global y cancelan cualquier flujo activo (`ConversationHandler`).
-
-### Comandos Principales
-- `/start` - Inicia el bot o reinicia onboarding
-- `/categorias` - Gestiona categorías
-- `/presupuesto` - Configura un presupuesto
-- `/ver_presupuesto` - Visualiza presupuestos
-- `/crear_meta` - Crea una meta de ahorro
-- `/aportar_meta` - Aporta a una meta existente
-- `/ultimos` - Muestra últimas 5 transacciones
-- `/reporte_mes` - Genera reporte mensual con gráfico
-- `/exportar` - Exporta transacciones a Excel
-- `/dashboard` - Genera enlace temporal al dashboard web
-- `/guia` o `/help` - Muestra guía de usuario
-
-### Comandos Legacy (Ocultos con Mensajes Educativos)
-
-Los siguientes comandos existen pero están "ocultos" (no aparecen en el menú principal). Cuando el usuario los usa, después de completar la transacción se muestra un mensaje educativo ("Tip") que enseña a usar lenguaje natural:
-
-- **`/gasto`** - Registra un gasto (flujo guiado)
-  - Después de completar: `"💡 **Tip:** La próxima vez no necesitas comandos. Solo escríbeme 'Gaste 50k' y yo hago el resto."`
-  
-- **`/ingreso`** - Registra un ingreso (flujo guiado)
-  - Después de completar: `"💡 **Tip:** La próxima vez no necesitas comandos. Solo escríbeme 'Recibí 500k' y yo hago el resto."`
-
-**Ubicación**: `bot/handlers/transactions.py:252, 327, 414, 472`
-
-**Filosofía**: Los comandos legacy actúan como "puente educativo" para migrar usuarios de comandos a lenguaje natural.
-
-### Entradas Multimodales
-- **Texto Natural**: "Gaste 20k en comida" o "¿Cuánto gasté hoy?"
-- **Imágenes**: Fotos de facturas/recibos para OCR automático
-- **Audio**: Notas de voz describiendo gastos o haciendo preguntas
-- **Consultas Analíticas**: "¿Cuánto gasté en comida este mes?", "¿Cuál fue mi mayor gasto?"
-
----
-
-## 🧪 Testing
-
-### Estrategia de QA
-
-El proyecto utiliza una estrategia de testing híbrida que combina tests unitarios y tests de integración con mocking completo.
-
-#### Tests de Integración con Mocking
-
-**Archivo**: `tests/test_integration_flows.py`
-
-**Filosofía**: Validar flujos completos de usuario sin tocar la base de datos real ni hacer llamadas a APIs externas (Gemini).
-
-**Características**:
-- **Mocking Completo**: 
-  - `SessionLocal` es mockeado para evitar tocar la BD real
-  - `AIService` y `AnalyticsService` son mockeados para evitar llamadas a Gemini
-  - Todos los módulos externos (`google.generativeai`) son mockeados antes de importar
-
-- **Flujos Validados**:
-  - Onboarding: Toggle de categorías, selección múltiple
-  - Navegación: Settings → Categorías, menú principal
-  - Prioridad Global: Botones del menú cancelan flujos activos
-  - Input Multimodal: Texto natural activa handlers correctos
-
-- **Helpers Reutilizables**:
-  - `_mock_session_factory()`: Mock de sesión de BD
-  - `_mock_ai_service()`: Mock de servicio de IA
-  - `_build_update_with_message()`: Construcción de Updates mock
-  - `_build_update_with_callback()`: Construcción de CallbackQueries mock
-
-**Ejemplo de Test**:
-```python
-async def test_onboarding_category_toggle_updates_state(self, mocker):
-    # Setup con mocking
-    session = mocker.MagicMock()
-    _mock_session_factory(mocker, session)
-    
-    # Ejecución
-    result = await onboarding_category_choice(update, context)
-    
-    # Verificación sin tocar BD real
-    assert "Comida" not in context.user_data["onboarding"]["selected_defaults"]
+**Manual**:
+```bash
+pip install -r requirements.txt
+alembic upgrade head
+python main.py
 ```
-
-**Beneficio**: Tests rápidos, aislados y sin dependencias externas. Permiten validar lógica de negocio sin costos de API ni riesgo de modificar datos reales.
-
-#### Tests Unitarios
-
-**Archivo**: `tests/test_callback_manager.py`
-
-- 25 tests para `CallbackManager`
-- Validación de límite de 64 bytes
-- Parsing robusto de callback_data
-
-### Política de Testing
-
-**Regla Crítica**: Cualquier cambio futuro en el Router, Onboarding o Prioridad de Menú REQUIERE actualizar o añadir tests de integración (`tests/test_integration_flows.py`) antes de desplegar.
-
-**Áreas que Requieren Tests Obligatorios**:
-- Cambios en `bot/handlers/natural_language.py` (Router)
-- Cambios en `bot/handlers/onboarding.py` (Onboarding)
-- Cambios en `bot/application.py` relacionados con prioridad de handlers (Global Menu Priority)
-- Nuevos flujos conversacionales (`ConversationHandler`)
-
-**Beneficio**: Garantiza que cambios en flujos críticos de UX no rompan funcionalidad existente sin detección.
-
----
-
-## 🚀 Despliegue
-
-### Docker
-- **Imagen base**: `python:3.12-slim`
-- **Puerto**: Configurable vía `PORT` (default: 8000)
-- **Comando**: `python main.py`
 
 ### Webhook Configuration
-- El bot usa **webhooks** (no polling)
-- `WEBHOOK_URL` debe ser HTTPS
-- `drop_pending_updates=True` al iniciar
 
-### Base de Datos
-- **PostgreSQL** requerido
-- **Alembic** configurado para gestión de migraciones
-- **Aplicar migraciones**: `alembic upgrade head`
+The bot runs in webhook mode (not polling) for production:
+- Webhook URL: `{WEBHOOK_URL}/{WEBHOOK_PATH}`
+- Handles all update types
+- Drops pending updates on startup
 
 ---
 
-## 📚 Referencias Rápidas
+## 10. Testing
 
-### Archivos "Corazón"
-- `bot/application.py`: Builder de aplicación y registro de handlers
-- `models.py`: Modelos ORM
-- `main.py`: Entry point del webhook
-- `bot/services/ai_service.py`: Cliente Gemini Multimodal
-- `bot/services/analytics_service.py`: Analista SQL seguro
-- `bot/handlers/natural_language.py`: Router inteligente
-- `bot/handlers/media_handler.py`: Procesador multimodal
+Test files are located in `tests/`:
+- `test_callback_manager.py` - Tests for callback data encoding/decoding
+- `test_integration_flows.py` - Integration tests for user flows
+- `test_main.py` - Tests for main application setup
 
-### Funciones Clave
-- `get_now_utc()`: Obtener fecha/hora actual en UTC
-- `convert_utc_to_local()`: Convertir UTC a hora local
-- `AIService.parse_transaction()`: Parsear transacción desde texto/imagen/audio
-- `AIService.transcribe_audio()`: Transcribir audio a texto
-- `AnalyticsService.answer_question()`: Responder pregunta financiera con SQL
-- `process_user_text_input()`: Procesar texto (compartido entre texto y voz)
+Testing framework: `pytest` with async support (`pytest-asyncio`)
 
 ---
 
-**Última actualización**: Diciembre 2024
-**Versión del código analizado**: Staging branch
-**Arquitectura**: FinBot AI 2.0 (Multimodal, AI-First)
+## 11. Future Enhancements (Potential)
+
+Based on the codebase structure, potential enhancements could include:
+- Multi-currency support (currently defaults to COP)
+- Budget tracking alerts (notifications when approaching limits)
+- Recurring transactions
+- Transaction editing (currently only deletion is supported)
+- More advanced analytics (trends, predictions)
+- Export to other formats (CSV, PDF)
+- Mobile app (currently Telegram + web dashboard)
+
+---
+
+## 12. Notes for Portfolio Reviewers
+
+This is a **sanitized public portfolio version** of the project. Some proprietary elements have been removed or simplified:
+
+1. **AI Prompts**: Full prompts containing business logic, Colombian slang patterns, and semantic rules are replaced with generic versions configurable via environment variables.
+
+2. **Analytics Prompts**: The full Text-to-SQL prompt with detailed schema information and security rules is simplified but maintains core functionality.
+
+3. **Configuration**: Sensitive configuration (API keys, database URLs) is not included. See environment variables section for required setup.
+
+4. **Documentation**: Some internal documentation files (e.g., `AUDITORIA_TECNICA_COMPLETA.md`, `FEATURES_RESTORED.md`) may contain references to proprietary processes but are included for context.
+
+The core architecture, data model, and feature set are accurately represented. The codebase demonstrates:
+- Modern Python async patterns
+- Clean separation of concerns
+- Robust error handling
+- Security-conscious design
+- Multimodal AI integration
+- Production-ready deployment setup

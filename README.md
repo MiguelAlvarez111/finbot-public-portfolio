@@ -1,82 +1,115 @@
-# 🤖 FinBot: Asistente Financiero con IA Multimodal
+# 🤖 FinBot AI — El asistente financiero que no necesita tu disciplina (porque ya la perdimos todos)
 
-FinBot es un bot de Telegram para finanzas personales construido con Python, PostgreSQL y **Google Gemini 2.5 Flash**.
+Bienvenido a FinBot, un experimento serio en cómo usar IA para organizar la vida financiera de gente normal que no quiere abrir Excel cada vez que compra una empanada.
 
-## 🚀 Características Principales
+Construido con cariño, Python, PostgreSQL y Google Gemini 2.5 Flash — porque si ya existe multimodalidad, ¿por qué no usarla para dejar de ser pobres?
 
-* **IA Multimodal:** Registra transacciones hablando (Audio), escribiendo (Texto Natural) o enviando una foto de la factura (Visión/OCR).
-    * *Ejemplo:* "Gasté 50 lucas en comida ayer" → Transacción guardada y categorizada.
+## 🚀 ¿Qué hace FinBot? (sin humo técnico)
 
-* **Gestión Completa:** Presupuestos mensuales, Metas de ahorro y Gestión de categorías.
+FinBot convierte cualquier cosa que le envíes en una transacción financiera:
 
-* **Reportes:** Gráficos mensuales y exportación a Excel.
+### Texto natural:
+→ "Gasté 50 lucas en comida ayer."
 
-* **Arquitectura Robusta:** SQLAlchemy (ORM), Alembic (Migraciones), Docker y Webhooks.
+✔ Entiende. ✔ Categoriza. ✔ Guarda.
 
-## 🛠️ Tech Stack
+### Audios:
+→ Tú hablando mientras caminas o estás apurado.
 
-**Python 3.12**, Flask, PostgreSQL, Google Gemini 2.5 Flash
+✔ Transcribe. ✔ Interpreta. ✔ Registra.
 
-### Principales Dependencias
-- `python-telegram-bot[webhooks]` - Framework para bots de Telegram
-- `SQLAlchemy` - ORM para gestión de base de datos
-- `Alembic` - Sistema de migraciones
-- `google-generativeai` - Integración con Gemini AI
-- `Pillow` - Procesamiento de imágenes
-- `Flask` - Dashboard web
-- `pandas` & `matplotlib` - Reportes y gráficos
+### Fotos de facturas:
+→ Le tiras una foto borrosa del Éxito.
 
-## 📋 Requisitos
+✔ Extrae valores. ✔ Identifica categoría. ✔ Lista para reportes.
 
-- Python 3.12+
+### Además:
+- **Metas de ahorro** (sin motivación tóxica).
+- **Presupuestos mensuales** (del tipo "no te gastes todo en Rappi, por favor").
+- **Gráficos y reportes** (pandas + matplotlib).
+- **Exportación a Excel** para los contadores del alma.
+- **Dashboard web** en Flask.
+- **Arquitectura sólida** con SQLAlchemy + Alembic + Docker.
+
+## 🧠 Tecnologías usadas
+
+### Backend/AI:
+- Python 3.12
+- Google Gemini 2.5 Flash
+- python-telegram-bot (Webhooks)
+- SQLAlchemy
+- Alembic
+- Pillow
+- pandas & matplotlib
+
+### Infraestructura:
 - PostgreSQL
-- Token de Telegram Bot
-- API Key de Google Gemini
+- Docker
+- Webhooks en producción
 
-## ⚙️ Configuración
+### Frontend (light):
+- Flask dashboard (modo minimalista, sin promesas)
 
-1. Clona el repositorio:
+## ⚙️ Cómo correrlo
+
+### 1. Clonar repo
 ```bash
 git clone <repository-url>
 cd telegram_finbot
 ```
 
-2. Instala dependencias:
+### 2. Instalar dependencias
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configura variables de entorno (crea un archivo `.env`):
+### 3. Configurar .env
 ```bash
-TELEGRAM_TOKEN=tu_token_de_telegram
+TELEGRAM_TOKEN=tu_token
 DATABASE_URL=postgresql://usuario:password@localhost/finbot
-GEMINI_API_KEY=tu_api_key_de_gemini
+GEMINI_API_KEY=tu_api_key
 WEBHOOK_URL=https://tu-dominio.com
-SECRET_KEY=clave_secreta_para_jwt
+SECRET_KEY=clave_flask
 ```
 
-4. Ejecuta migraciones:
+### 4. Migraciones
 ```bash
 alembic upgrade head
 ```
 
-5. Inicia el bot:
+### 5. Iniciar
 ```bash
 python main.py
 ```
 
-## 🐳 Docker
+## 🐳 Versión Docker
 
 ```bash
 docker build -t finbot .
 docker run -p 8000:8000 --env-file .env finbot
 ```
 
-## 📚 Documentación
+## 📘 Documentación interna
 
-Para documentación técnica completa, consulta [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+Toda la explicación del proyecto (arquitectura, capas, modelos de datos, flujo multimodal, servicios de IA, etc.) está en:
 
-## 📝 Licencia
+👉 **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)**
 
-[Especificar licencia si aplica]
+## 🛡️ Licencia / Disclaimer
+
+Este repo es la versión pública y sanitizada del proyecto real.
+
+Prompts privados, seguridad avanzada y lógica sensible han sido removidos o reemplazados con placeholders.
+
+## 🤝 ¿Por qué existe FinBot?
+
+Porque la mayoría de apps de finanzas:
+
+- Te hacen tocar 9 botones para registrar un gasto.
+- Te piden disciplina que ninguno tenemos.
+- Son más aburridas que leer PDF del SAT.
+
+FinBot quiere ser lo contrario: **rápido, natural, cero fricción, IA-first**.
+
+Si puedes hablarle o mandarle una foto, ya estás haciendo finanzas personales.
 
