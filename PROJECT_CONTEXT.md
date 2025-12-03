@@ -1,4 +1,21 @@
-# Project Context
+# PROJECT_CONTEXT.md
+
+⚠️ **This is the public, sanitized context for FinBot AI.** Some internal prompts and configurations were simplified for portfolio purposes.
+
+---
+
+## 📖 Reading Guide
+
+> **Si solo tienes 3 minutos, lee:**
+> - Sección 1 (Overview)
+> - Sección 2 (Main Features)
+> - Sección 4 (Architecture & Folder Structure)
+>
+> **Si quieres ver cómo pienso producto y seguridad:**
+> - Sección 6 (AI & Analytics Layer)
+> - Sección 8 (Security Considerations)
+
+---
 
 ## 1. Overview
 

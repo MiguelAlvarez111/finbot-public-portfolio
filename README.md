@@ -1,5 +1,9 @@
 # 🤖 FinBot AI — El asistente financiero que no necesita tu disciplina (porque ya la perdimos todos)
 
+> 🇬🇧 **TL;DR (English)**  
+> FinBot is a multimodal personal finance Telegram bot built with Python, PostgreSQL and Google Gemini 2.5 Flash.  
+> Users can record transactions via text, audio and images, and ask natural-language questions that are translated into safe SQL analytics.
+
 Bienvenido a FinBot, un experimento serio en cómo usar IA para organizar la vida financiera de gente normal que no quiere abrir Excel cada vez que compra una empanada.
 
 Construido con cariño, Python, PostgreSQL y Google Gemini 2.5 Flash — porque si ya existe multimodalidad, ¿por qué no usarla para dejar de ser pobres?
@@ -95,11 +99,23 @@ Toda la explicación del proyecto (arquitectura, capas, modelos de datos, flujo 
 
 👉 **[PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)**
 
+## 🔍 Código clave para revisar
+
+Si quieres ver lo interesante del código, empieza aquí:
+
+- **`bot/services/ai_service.py`** → Integración multimodal con Gemini (texto, audio, imagen).
+- **`bot/services/analytics_service.py`** → Preguntas en lenguaje natural → SQL seguro → respuesta amigable.
+- **`bot/handlers/natural_language.py`** → Enrutamiento entre registrar transacciones y responder consultas.
+- **`dashboard.py` + `templates/dashboard.html`** → Dashboard web con Flask + JWT.
+- **`models.py` + `migrations/`** → Modelo de datos y migraciones con SQLAlchemy + Alembic.
+
 ## 🛡️ Licencia / Disclaimer
 
 Este repo es la versión pública y sanitizada del proyecto real.
 
 Prompts privados, seguridad avanzada y lógica sensible han sido removidos o reemplazados con placeholders.
+
+🔒 **Para más detalles sobre qué se sanitizó exactamente:** ver [`PUBLIC_REPO_NOTICE.md`](PUBLIC_REPO_NOTICE.md).
 
 ## 🤝 ¿Por qué existe FinBot?
 
